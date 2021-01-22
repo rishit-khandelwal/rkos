@@ -1,5 +1,2 @@
-mod mcrs;
-mod vga;
-
-pub use mcrs::*;
-pub use vga::*;
+pub mod mcrs;
+pub mod vga;

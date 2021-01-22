@@ -1,9 +1,9 @@
 use lazy_static::lazy_static;
 
-use super::vga;
+use super::vga::{self, Writer};
 use core::fmt::Write;
 use spin::Mutex;
-use vga::Writer;
+// use vga::Writer;
 
 lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
@@ -14,7 +14,7 @@ lazy_static! {
     });
 }
 
-impl Write for vga::Writer {
+impl Write for Writer {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         self.write_string(s);
         Ok(())
