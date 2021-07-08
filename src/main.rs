@@ -3,7 +3,10 @@
 
 mod vga;
 
-use core::panic::PanicInfo;
+use core::{
+    fmt::{self, write},
+    panic::PanicInfo,
+};
 
 use vga::{Buffer, Color, VGAWriter};
 
@@ -20,7 +23,7 @@ pub extern "C" fn _start() -> ! {
         buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
     };
 
-    writer.write_str("Noice\nMade by rk");
+    print!(writer, "{}", 1.0 / 3.0);
 
     loop {}
 }

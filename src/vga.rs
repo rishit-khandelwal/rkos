@@ -1,3 +1,5 @@
+use core::fmt;
+
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -75,9 +77,28 @@ impl VGAWriter {
         }
     }
 
-    pub fn write_str(&mut self, s: &str) {
+    pub fn write_string(&mut self, s: &str) {
         s.chars().into_iter().for_each(|c| {
             self.write(c as u8);
         });
     }
+}
+
+impl fmt::Write for VGAWriter {
+    fn write_fmt(mut self: &mut Self, args: fmt::Arguments<'_>) -> fmt::Result {
+        self.write_string(args.as_str().unwrap());
+        Ok(())
+    }
+
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(())
+    }
+}
+
+#[macro_export]
+macro_rules! print {
+    ($writer:ident, $($args:expr),*) => {
+        fmt::write(&mut $writer, format_args!($($args),*)).unwrap();
+    };
 }
