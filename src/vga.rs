@@ -53,6 +53,9 @@ pub struct VGAWriter {
 
 impl VGAWriter {
     pub fn write(&mut self, byte: u8) {
+        if self.rpos >= BUFFER_HEIGHT - 1 {
+            self.rpos = 0;
+        }
         match byte {
             b'\n' => {
                 self.rpos += 1;

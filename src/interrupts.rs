@@ -1,8 +1,8 @@
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
 use crate::{
     gdt, print, println,
-    vga::{self, Charecter, Color, ColorCode},
+    vga::{self, Charecter, Color, ColorCode, BUFFER_WIDTH},
 };
 
 use lazy_static::lazy_static;
@@ -35,6 +35,7 @@ lazy_static! {
                 .set_handler_fn(double_fault_handler)
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX)
         };
+        idt.page_fault.set_handler_fn(page_fault_handler);
 
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_handler);
@@ -57,6 +58,19 @@ extern "x86-interrupt" fn double_fault_handler(
 ) -> ! {
     println!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
     loop {}
+}
+
+extern "x86-interrupt" fn page_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: PageFaultErrorCode,
+) {
+    use x86_64::registers::control::Cr2;
+
+    println!("EXCEPTION: PAGE FAULT");
+    println!("Accessed Address: {:?}", Cr2::read());
+    println!("Error Code: {:?}", error_code);
+    println!("{:#?}", stack_frame);
+    unsafe { asm!("hlt") };
 }
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -103,6 +117,8 @@ extern "x86-interrupt" fn keyboard_handler(_: InterruptStackFrame) {
                                 ascii_char: b'\0',
                                 color_code,
                             };
+                        } else {
+                            writer.rpos -= 1;
                         }
                     }
                     27 => unsafe { asm!("hlt") },

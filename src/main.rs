@@ -5,20 +5,28 @@
 
 use core::panic::PanicInfo;
 
-use rkos::vga::{Charecter, Color, ColorCode, BUFFER_HEIGHT, BUFFER_WIDTH, WRITER};
+use rkos::{
+    memory::active_level_4_table,
+    println,
+    vga::{Charecter, Color, ColorCode, BUFFER_HEIGHT, BUFFER_WIDTH, WRITER},
+};
+
+use bootloader::{entry_point, BootInfo};
+use x86_64::VirtAddr;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+entry_point!(kernel_main);
+
+fn kernel_main(bootinfo: &'static BootInfo) -> ! {
     rkos::init();
 
     let mut writer = WRITER.lock();
 
-    let s = "RK-OS";
+    let s = "RK-OS made by Rishit Khandelwal (github.com/rishit-khandelwal)";
 
     for l in 0..BUFFER_WIDTH {
         writer.buffer.chars[BUFFER_HEIGHT - 1][l] = Charecter {
@@ -37,6 +45,15 @@ pub extern "C" fn _start() -> ! {
     }
 
     unsafe { WRITER.force_unlock() };
+
+    let phys_mem_offset = VirtAddr::new(bootinfo.physical_memory_offset);
+    let l4_table = unsafe { active_level_4_table(phys_mem_offset) };
+
+    for (i, entry) in l4_table.iter().enumerate() {
+        if !entry.is_unused() {
+            println!("L4 entry {}: {:?}", i, entry);
+        }
+    }
 
     loop {
         unsafe {
