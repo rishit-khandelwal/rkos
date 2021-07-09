@@ -1,4 +1,4 @@
-use core::fmt;
+use core::fmt::{self, Write};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,25 +24,25 @@ pub enum Color {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
-struct ColorCode(u8);
+pub struct ColorCode(u8);
 
 impl ColorCode {
-    fn new(foreground: Color, background: Color) -> ColorCode {
+    pub fn new(foreground: Color, background: Color) -> ColorCode {
         ColorCode((background as u8) << 4 | (foreground as u8))
     }
 }
 
-struct Charecter {
-    ascii_char: u8,
-    color_code: ColorCode,
+pub struct Charecter {
+    pub ascii_char: u8,
+    pub color_code: ColorCode,
 }
 
-const BUFFER_HEIGHT: usize = 25;
-const BUFFER_WIDTH: usize = 80;
+pub const BUFFER_HEIGHT: usize = 25;
+pub const BUFFER_WIDTH: usize = 80;
 
 #[repr(transparent)]
 pub struct Buffer {
-    chars: [[Charecter; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    pub chars: [[Charecter; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 pub struct VGAWriter {
@@ -84,21 +84,41 @@ impl VGAWriter {
     }
 }
 
-impl fmt::Write for VGAWriter {
-    fn write_fmt(mut self: &mut Self, args: fmt::Arguments<'_>) -> fmt::Result {
-        self.write_string(args.as_str().unwrap());
-        Ok(())
-    }
-
+impl Write for VGAWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_string(s);
         Ok(())
     }
 }
 
+use lazy_static::lazy_static;
+use spin::Mutex;
+
+lazy_static! {
+    pub static ref WRITER: Mutex<VGAWriter> = Mutex::new(VGAWriter {
+        cpos: 0,
+        rpos: 0,
+
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    });
+}
+
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    use x86_64::instructions::interrupts;
+
+    interrupts::without_interrupts(|| {
+        WRITER.lock().write_fmt(args).unwrap();
+    });
+}
+
 #[macro_export]
 macro_rules! print {
-    ($writer:ident, $($args:expr),*) => {
-        fmt::write(&mut $writer, format_args!($($args),*)).unwrap();
-    };
+    ($($arg:tt)*) => ($crate::vga::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }
